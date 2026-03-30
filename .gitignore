@@ -1,0 +1,19 @@
+# Python cache
+__pycache__/
+*.pyc
+
+# Virtual environments
+venv/
+.venv/
+env/
+
+# OS generated files
+.DS_Store
+
+# File generati dallo script
+confronto_modalita.png
+
+# Ignora eventuali dataset scaricati localmente o file zip
+plantvillage/
+*.zip
+*.tar.gz
