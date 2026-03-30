@@ -17,3 +17,6 @@ confronto_modalita.png
 plantvillage/
 *.zip
 *.tar.gz
+
+# Ignora file grafico
+*.png
