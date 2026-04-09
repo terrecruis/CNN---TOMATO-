@@ -91,7 +91,6 @@ def plot_comparison(fcnn_results, cnn_results):
 
     plt.tight_layout()
     plt.savefig('confronto_fcnn_vs_cnn.png', dpi=150)
-    plt.show()
     print("\nGrafico salvato: confronto_fcnn_vs_cnn.png")
 
 
@@ -118,7 +117,7 @@ def plot_loss_curves(fcnn_results, cnn_results):
 
     plt.tight_layout()
     plt.savefig('loss_curves.png', dpi=150)
-    plt.show()
+    # plt.show()
     print("Grafico salvato: loss_curves.png")
 
 

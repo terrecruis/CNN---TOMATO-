@@ -127,7 +127,7 @@ def plot_dataset_stats(full_dataset, output_dir='.'):
     plt.tight_layout()
     out_path = f'{output_dir}/dataset_stats.png'
     plt.savefig(out_path, dpi=150, bbox_inches='tight')
-    plt.show()
+    # plt.show()
     print(f"💾 Grafico salvato: {out_path}")
     
     return fig
@@ -219,7 +219,7 @@ def plot_confusion_matrix(model, test_data, class_names, output_dir='.', model_l
     safe_label = model_label.replace(' ', '_').replace('[', '').replace(']', '')
     out_path = f'{output_dir}/confusion_matrix_{safe_label}.png'
     plt.savefig(out_path, dpi=150, bbox_inches='tight')
-    plt.show()
+    # plt.show()
     print(f"💾 Matrice di confusione salvata: {out_path}")
 
 def plot_overfitting_analysis(fcnn_results, cnn_results, output_dir='.'):
@@ -273,7 +273,7 @@ def plot_overfitting_analysis(fcnn_results, cnn_results, output_dir='.'):
     plt.tight_layout()
     out_path = f'{output_dir}/overfitting_analysis.png'
     plt.savefig(out_path, dpi=150, bbox_inches='tight')
-    plt.show()
+    # plt.show()
     print(f"💾 Grafico overfitting salvato: {out_path}")
 
 if __name__ == '__main__':
