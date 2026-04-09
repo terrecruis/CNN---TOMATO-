@@ -64,33 +64,48 @@ def train_minibatch(model, train_data, test_data, batch_size=64, epochs=10, lr=0
     optimizer = optim.Adam(model.parameters(), lr=lr)
 
     train_loader = DataLoader(train_data, batch_size=batch_size, shuffle=True)
-    test_loader = DataLoader(test_data, batch_size=64)
+    test_loader  = DataLoader(test_data,  batch_size=64)
 
-    history = {'loss': [], 'accuracy': []}
+    history = {'loss': [], 'val_loss': [], 'accuracy': []}
 
     for epoch in range(epochs):
+        # --- TRAINING ---
         model.train()
         running_loss = 0.0
         pbar = tqdm(train_loader, desc=f"[Mini-Batch] Epoch {epoch+1}/{epochs}", leave=True)
-        
         for images, labels in pbar:
             images, labels = images.to(device), labels.to(device)
-            
             optimizer.zero_grad()
             outputs = model(images)
             loss = criterion(outputs, labels)
             loss.backward()
             optimizer.step()
-            
             running_loss += loss.item()
             pbar.set_postfix({'loss': f"{loss.item():.4f}"})
 
-        acc = 100 * evaluate_model(model, test_loader, device) / len(test_data)
-        avg_loss = running_loss / len(train_loader)
-        history['loss'].append(avg_loss)
+        avg_train_loss = running_loss / len(train_loader)
+
+        # --- VALIDATION LOSS ---
+        model.eval()
+        val_loss = 0.0
+        correct = 0
+        with torch.no_grad():
+            for images, labels in test_loader:
+                images, labels = images.to(device), labels.to(device)
+                outputs = model(images)
+                loss = criterion(outputs, labels)
+                val_loss += loss.item()
+                _, pred = torch.max(outputs, 1)
+                correct += (pred == labels).sum().item()
+
+        avg_val_loss = val_loss / len(test_loader)
+        acc = 100 * correct / len(test_data)
+
+        history['loss'].append(avg_train_loss)
+        history['val_loss'].append(avg_val_loss)
         history['accuracy'].append(acc)
-        print(f" -> Accuracy: {acc:.2f}%")
-    
+        print(f" -> Train Loss: {avg_train_loss:.4f} | Val Loss: {avg_val_loss:.4f} | Accuracy: {acc:.2f}%")
+
     return history
 
 def train_batch(model, train_data, test_data, epochs=10, lr=0.001):
@@ -108,7 +123,7 @@ def train_batch(model, train_data, test_data, epochs=10, lr=0.001):
 
     for epoch in range(epochs):
         model.train()
-        # Qui la barra di caricamento è simbolica perché c'è solo 1 batch
+        
         pbar = tqdm(train_loader, desc=f"[Full Batch] Epoch {epoch+1}/{epochs}")
         
         for images, labels in pbar:

@@ -6,7 +6,7 @@ import numpy as np
 from dataset import get_dataset, get_train_test_split
 from model import TomatoCNN, TomatoFCNN
 from train import train_minibatch   # usiamo mini-batch (Adam) per tutti gli esperimenti
-from analysis import analyze_dataset
+from analysis import analyze_dataset, plot_dataset_stats, plot_confusion_matrix, plot_overfitting_analysis
 
 # --- CONFIGURAZIONE GLOBALE ---
 EPOCHS = 15
@@ -34,14 +34,15 @@ CNN_CONFIGS = [
     {'n_filters': 32, 'kernel_size': 3, 'num_blocks': 2, 'label': 'CNN [32f-k3-2blk]'},
 ]
 
+trained_models = {}
 
 def run_experiment(model, train_data, test_data, label):
-    """Wrapper che addestra un modello e restituisce history + accuratezza finale."""
     print(f"\n  -> Training: {label}")
     history = train_minibatch(model, train_data, test_data,
                                batch_size=BATCH_SIZE, epochs=EPOCHS)
     final_acc = history['accuracy'][-1]
     print(f"  -> Accuratezza finale: {final_acc:.2f}%")
+    trained_models[label] = model
     return history
 
 
@@ -153,6 +154,7 @@ def main():
     print(f"Dataset: {len(full_dataset)} immagini | {len(full_dataset.classes)} classi")
     print(f"Classi: {full_dataset.classes}")
     df_classes = analyze_dataset(full_dataset)
+    plot_dataset_stats(full_dataset)
 
     train_data, test_data = get_train_test_split(full_dataset)
     print(f"Train: {len(train_data)} | Test: {len(test_data)}")
@@ -202,7 +204,20 @@ def main():
     print_summary_table(fcnn_results, cnn_results)
     plot_comparison(fcnn_results, cnn_results)
     plot_loss_curves(fcnn_results, cnn_results)
+    print_summary_table(fcnn_results, cnn_results)
+    plot_comparison(fcnn_results, cnn_results)
+    plot_loss_curves(fcnn_results, cnn_results)
+    plot_overfitting_analysis(fcnn_results, cnn_results)
     print("\nEsperimento completato!")
+
+    # =====================================================
+    # MATRICI DI CONFUSIONE (migliore FCNN e migliore CNN)
+    # =====================================================
+    best_fcnn_label = max(fcnn_results, key=lambda k: fcnn_results[k]['accuracy'][-1])
+    best_cnn_label  = max(cnn_results,  key=lambda k: cnn_results[k]['accuracy'][-1])
+
+    plot_confusion_matrix(trained_models[best_fcnn_label], test_data, full_dataset.classes, model_label=best_fcnn_label)
+    plot_confusion_matrix(trained_models[best_cnn_label],  test_data, full_dataset.classes, model_label=best_cnn_label)
 
 
 if __name__ == '__main__':
