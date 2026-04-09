@@ -43,6 +43,13 @@ def run_experiment(model, train_data, test_data, label):
     final_acc = history['accuracy'][-1]
     print(f"  -> Accuratezza finale: {final_acc:.2f}%")
     trained_models[label] = model
+
+    # Salva i pesi
+    os.makedirs('weights', exist_ok=True)
+    safe_label = label.replace(' ', '_').replace('[', '').replace(']', '')
+    torch.save(model.state_dict(), f'weights/{safe_label}.pth')
+    print(f"  -> Pesi salvati: weights/{safe_label}.pth")
+    
     return history
 
 
@@ -201,9 +208,6 @@ def main():
     # =====================================================
     # RISULTATI E GRAFICI
     # =====================================================
-    print_summary_table(fcnn_results, cnn_results)
-    plot_comparison(fcnn_results, cnn_results)
-    plot_loss_curves(fcnn_results, cnn_results)
     print_summary_table(fcnn_results, cnn_results)
     plot_comparison(fcnn_results, cnn_results)
     plot_loss_curves(fcnn_results, cnn_results)
