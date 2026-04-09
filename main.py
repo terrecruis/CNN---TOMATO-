@@ -149,7 +149,10 @@ def main():
     print(f"Path: {dataset_path}")
 
     # 2. Caricamento
-    df_classes = analyze_dataset(full_dataset)  
+    full_dataset = get_dataset(dataset_path)
+    print(f"Dataset: {len(full_dataset)} immagini | {len(full_dataset.classes)} classi")
+    print(f"Classi: {full_dataset.classes}")
+    df_classes = analyze_dataset(full_dataset)
 
     train_data, test_data = get_train_test_split(full_dataset)
     print(f"Train: {len(train_data)} | Test: {len(test_data)}")
