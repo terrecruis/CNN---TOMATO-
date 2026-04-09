@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """
 Analisi completa dataset PlantVillage Tomato (richiesta prof).
 Da importare in main.py.

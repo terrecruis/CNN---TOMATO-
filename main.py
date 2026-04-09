@@ -1,4 +1,3 @@
-# main.py
 import os
 import kagglehub
 import matplotlib.pyplot as plt
