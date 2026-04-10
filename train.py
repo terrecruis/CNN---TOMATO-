@@ -4,7 +4,9 @@ import torch.optim as optim
 from torch.utils.data import DataLoader, SubsetRandomSampler
 from sklearn.model_selection import KFold
 import numpy as np
-from tqdm import tqdm  # Libreria per la barra di caricamento
+from tqdm import tqdm
+from sklearn.model_selection import StratifiedKFold
+from sklearn.metrics import classification_report
 
 def evaluate_model(model, test_loader, device):
     """Funzione di supporto per calcolare l'accuratezza sul test set."""
@@ -201,3 +203,81 @@ def train_kfold(dataset, model_class, k_folds=5, epochs=5, batch_size=64, n_filt
     print(f' MEDIA ACCURATEZZA {k_folds}-FOLD: {np.mean(list(results.values())):.2f}%')
     print("#"*40)
     return results
+
+def train_stratified_kfold(train_dataset, val_dataset, model_class, model_kwargs, k_folds=5, epochs=15, batch_size=64):
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    
+    # Usiamo StratifiedKFold e passiamo i targets!
+    skf = StratifiedKFold(n_splits=k_folds, shuffle=True, random_state=42)
+    
+    results = {}
+    targets = train_dataset.targets # Necessari per stratificare
+    
+    all_true_labels_last_fold = []
+    all_pred_labels_last_fold = []
+
+    for fold, (train_ids, val_ids) in enumerate(skf.split(np.zeros(len(targets)), targets)):
+        print(f'\n' + "="*40)
+        print(f' FOLD {fold+1}/{k_folds}')
+        print("="*40)
+        
+        train_subsampler = SubsetRandomSampler(train_ids)
+        val_subsampler = SubsetRandomSampler(val_ids)
+        
+        # MAGIA: il train usa le immagini aumentate, il val usa quelle originali
+        train_loader = DataLoader(train_dataset, batch_size=batch_size, sampler=train_subsampler)
+        val_loader   = DataLoader(val_dataset, batch_size=batch_size, sampler=val_subsampler)
+        
+        model = model_class(**model_kwargs).to(device)
+        optimizer = optim.Adam(model.parameters(), lr=0.001)
+        criterion = nn.CrossEntropyLoss()
+        
+        for epoch in range(epochs):
+            model.train()
+            pbar = tqdm(train_loader, desc=f"Fold {fold+1} - Ep {epoch+1}/{epochs}", leave=False)
+            for images, labels in pbar:
+                images, labels = images.to(device), labels.to(device)
+                optimizer.zero_grad()
+                outputs = model(images)
+                loss = criterion(outputs, labels)
+                loss.backward()
+                optimizer.step()
+                pbar.set_postfix({'loss': f"{loss.item():.4f}"})
+                
+        # Valutazione
+        model.eval()
+        correct, total = 0, 0
+        fold_true, fold_pred = [], []
+        
+        with torch.no_grad():
+            for images, labels in val_loader:
+                images, labels = images.to(device), labels.to(device)
+                outputs = model(images)
+                _, predicted = torch.max(outputs.data, 1)
+                
+                total += labels.size(0)
+                correct += (predicted == labels).sum().item()
+                
+                # Salviamo per il report del fold finale
+                if fold == k_folds - 1:
+                    fold_true.extend(labels.cpu().numpy())
+                    fold_pred.extend(predicted.cpu().numpy())
+                
+        accuracy = 100.0 * correct / total
+        results[fold] = accuracy
+        print(f'-> Accuratezza Fold {fold+1}: {accuracy:.2f}%')
+        
+        # Salviamo i risultati dell'ultimo fold per il Classification Report
+        if fold == k_folds - 1:
+            all_true_labels_last_fold = fold_true
+            all_pred_labels_last_fold = fold_pred
+
+    print(f'\n' + "#"*40)
+    print(f' MEDIA ACCURATEZZA {k_folds}-FOLD: {np.mean(list(results.values())):.2f}%')
+    print("#"*40)
+    
+    print("\n--- CLASSIFICATION REPORT (Ultimo Fold) ---")
+    class_names = [name.replace('Tomato___', '') for name in train_dataset.classes]
+    print(classification_report(all_true_labels_last_fold, all_pred_labels_last_fold, target_names=class_names))
+
+    return results, model # Ritorna il modello dell'ultimo fold per eventuali matrici
