@@ -276,6 +276,125 @@ def plot_overfitting_analysis(fcnn_results, cnn_results, output_dir='.'):
     # plt.show()
     print(f"💾 Grafico overfitting salvato: {out_path}")
 
+def plot_kfold_results(kfold_results, output_dir='.'):
+    """
+    Genera un bar plot delle accuracy dei 5 fold con la linea della media.
+    """
+    folds = list(kfold_results.keys())
+    accuracies = list(kfold_results.values())
+    mean_acc = np.mean(accuracies)
+
+    fig, ax = plt.subplots(figsize=(8, 5))
+    fig.suptitle('Risultati Stratified 5-Fold Cross Validation', fontsize=14, fontweight='bold')
+
+    bars = ax.bar(folds, accuracies, color='skyblue', edgecolor='black')
+    
+    # Linea della media
+    ax.axhline(y=mean_acc, color='red', linestyle='--', label=f'Media: {mean_acc:.2f}%')
+    
+    # Testo sopra le barre
+    for bar in bars:
+        yval = bar.get_height()
+        ax.text(bar.get_x() + bar.get_width()/2, yval + 0.5, f'{yval:.2f}%', ha='center', va='bottom', fontsize=10)
+
+    ax.set_ylim(min(accuracies) - 5, 100)
+    ax.set_xticks(folds)
+    ax.set_xticklabels([f"Fold {f+1}" for f in folds])
+    ax.set_ylabel('Accuratezza (%)')
+    ax.legend()
+    ax.grid(axis='y', alpha=0.3)
+
+    plt.tight_layout()
+    out_path = f'{output_dir}/kfold_results.png'
+    plt.savefig(out_path, dpi=150)
+    print(f"💾 Grafico K-Fold salvato: {out_path}")
+    plt.close()
+
+
+def plot_classification_report(report_text, class_names, output_dir='.'):
+    """
+    Estrae le metriche dal report testuale generato da sklearn e crea una heatmap.
+    """
+    lines = report_text.split('\n')
+    data = []
+    
+    # Parse del testo
+    for line in lines[2:-5]: 
+        row_data = line.split()
+        if len(row_data) >= 4:
+            # uniamo il nome della classe se ha spazi
+            class_name = " ".join(row_data[:-4])
+            precision = float(row_data[-4])
+            recall = float(row_data[-3])
+            f1 = float(row_data[-2])
+            data.append([precision, recall, f1])
+
+    data = np.array(data)
+    short_names = [c.replace('Tomato___', '').replace('_', ' ') for c in class_names]
+
+    fig, ax = plt.subplots(figsize=(10, 6))
+    im = ax.imshow(data, cmap='YlGn', vmin=0.5, vmax=1.0)
+
+    ax.set_xticks(np.arange(3))
+    ax.set_yticks(np.arange(len(short_names)))
+    ax.set_xticklabels(['Precision', 'Recall', 'F1-Score'])
+    ax.set_yticklabels(short_names)
+
+    # Inserisci i valori nelle celle
+    for i in range(len(short_names)):
+        for j in range(3):
+            text_color = "white" if data[i, j] > 0.85 else "black"
+            ax.text(j, i, f"{data[i, j]:.2f}", ha="center", va="center", color=text_color)
+
+    ax.set_title("Classification Report (Ultimo Fold)", fontweight='bold')
+    fig.colorbar(im, ax=ax, fraction=0.046, pad=0.04)
+
+    plt.tight_layout()
+    out_path = f'{output_dir}/classification_report.png'
+    plt.savefig(out_path, dpi=150)
+    print(f"💾 Grafico Classification Report salvato: {out_path}")
+    plt.close()
+
+def plot_augmented_images(dataset, num_images=5, output_dir='.'):
+    """
+    Visualizza un campione casuale di immagini dal dataset aumentato per verificare le trasformazioni.
+    Applica la de-normalizzazione per visualizzare i colori corretti.
+    """
+    import random
+
+    fig, axes = plt.subplots(1, num_images, figsize=(15, 3.5))
+    fig.suptitle('Esempi di Data Augmentation (Train Set K-Fold)', fontsize=14, fontweight='bold')
+
+    # Valori di normalizzazione usati nel dataset
+    mean = np.array([0.485, 0.456, 0.406])
+    std = np.array([0.229, 0.224, 0.225])
+
+    # Prendi 5 immagini a caso
+    indices = random.sample(range(len(dataset)), num_images)
+
+    for i, idx in enumerate(indices):
+        img_tensor, label_idx = dataset[idx]
+        
+        # Converti da (Canali, Altezza, Larghezza) a (Altezza, Larghezza, Canali)
+        img_np = img_tensor.numpy().transpose((1, 2, 0))
+        
+        # De-normalizza: img = img * std + mean
+        img_np = std * img_np + mean
+        img_np = np.clip(img_np, 0, 1)  # Assicura che i valori restino tra 0 e 1
+        
+        axes[i].imshow(img_np)
+        
+        # Nome della classe (pulito)
+        class_name = dataset.classes[label_idx].replace('Tomato___', '').replace('_', ' ')
+        axes[i].set_title(class_name, fontsize=9)
+        axes[i].axis('off')
+        
+    plt.tight_layout()
+    out_path = f'{output_dir}/augmented_samples.png'
+    plt.savefig(out_path, dpi=150)
+    print(f"💾 Esempi di augmentation salvati: {out_path}")
+    plt.close()
+
 if __name__ == '__main__':
     # Test standalone
     import kagglehub
