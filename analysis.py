@@ -6,6 +6,7 @@ Da importare in main.py.
 from collections import Counter
 import pandas as pd
 import numpy as np
+import random
 import matplotlib.pyplot as plt
 import matplotlib.patches as mpatches
 
@@ -405,3 +406,103 @@ if __name__ == '__main__':
     analyze_dataset(ds)
     plot_dataset_stats(ds)
     plot_confusion_matrix(model=None, test_data=ds, class_names=ds.classes, model_label='Test')
+
+def plot_class_grid(dataset, images_per_class=5, output_dir='.'):
+    """
+    Genera una griglia con N immagini per ogni classe del dataset.
+    Perfetta come slide di apertura della presentazione.
+    """
+    classes = dataset.classes
+    num_classes = len(classes)
+    
+    mean = np.array([0.485, 0.456, 0.406])
+    std  = np.array([0.229, 0.224, 0.225])
+
+    # Raggruppa gli indici per classe
+    class_to_indices = {c: [] for c in range(num_classes)}
+    for idx, label in enumerate(dataset.targets):
+        class_to_indices[label].append(idx)
+
+    fig, axes = plt.subplots(
+        num_classes, images_per_class,
+        figsize=(images_per_class * 2.5, num_classes * 2.5)
+    )
+    fig.suptitle('PlantVillage — Esempi per Classe (Foglie di Pomodoro)',
+                 fontsize=16, fontweight='bold', y=1.01)
+
+    for row, cls_idx in enumerate(range(num_classes)):
+        # Nome classe pulito
+        cls_name = classes[cls_idx].replace('Tomato___', '').replace('_', ' ')
+        
+        # Prendi N indici casuali da questa classe
+        chosen = random.sample(class_to_indices[cls_idx], 
+                               min(images_per_class, len(class_to_indices[cls_idx])))
+        
+        for col, img_idx in enumerate(chosen):
+            ax = axes[row][col]
+            img_tensor, _ = dataset[img_idx]
+            
+            # De-normalizza
+            img_np = img_tensor.numpy().transpose((1, 2, 0))
+            img_np = std * img_np + mean
+            img_np = np.clip(img_np, 0, 1)
+            
+            ax.imshow(img_np)
+            ax.axis('off')
+            
+            # Etichetta solo nella prima colonna
+            if col == 0:
+                ax.set_ylabel(cls_name, fontsize=9, fontweight='bold',
+                              rotation=0, labelpad=80, va='center')
+
+    plt.tight_layout()
+    out_path = f'{output_dir}/class_grid.png'
+    plt.savefig(out_path, dpi=150, bbox_inches='tight')
+    print(f"💾 Griglia classi salvata: {out_path}")
+    plt.close()
+
+
+def plot_original_vs_augmented(train_dataset, val_dataset, num_examples=6, output_dir='.'):
+    """
+    Affianca la stessa foglia nella versione originale (val) e aumentata (train).
+    Rende visivamente ovvio cosa fa la Data Augmentation.
+    """
+    mean = np.array([0.485, 0.456, 0.406])
+    std  = np.array([0.229, 0.224, 0.225])
+
+    def denorm(tensor):
+        img = tensor.numpy().transpose((1, 2, 0))
+        img = std * img + mean
+        return np.clip(img, 0, 1)
+
+    # Prendi indici casuali
+    indices = random.sample(range(len(val_dataset)), num_examples)
+
+    fig, axes = plt.subplots(2, num_examples, figsize=(num_examples * 3, 7))
+    fig.suptitle('Data Augmentation — Originale vs Trasformata',
+                 fontsize=14, fontweight='bold')
+
+    # Etichette righe
+    axes[0][0].set_ylabel('Originale', fontsize=12, fontweight='bold', rotation=90)
+    axes[1][0].set_ylabel('Aumentata', fontsize=12, fontweight='bold', rotation=90)
+
+    for col, idx in enumerate(indices):
+        # Riga 0: immagine originale (val_dataset, nessuna augmentation)
+        img_orig, label = val_dataset[idx]
+        axes[0][col].imshow(denorm(img_orig))
+        axes[0][col].axis('off')
+
+        # Nome classe
+        cls_name = val_dataset.classes[label].replace('Tomato___', '').replace('_', ' ')
+        axes[0][col].set_title(cls_name, fontsize=8)
+
+        # Riga 1: stessa immagine ma dal train_dataset (con augmentation on-the-fly)
+        img_aug, _ = train_dataset[idx]
+        axes[1][col].imshow(denorm(img_aug))
+        axes[1][col].axis('off')
+
+    plt.tight_layout()
+    out_path = f'{output_dir}/original_vs_augmented.png'
+    plt.savefig(out_path, dpi=150, bbox_inches='tight')
+    print(f"💾 Confronto augmentation salvato: {out_path}")
+    plt.close()

@@ -16,7 +16,9 @@ from analysis import (
     plot_overfitting_analysis,
     plot_kfold_results,         # Nuovi grafici K-Fold
     plot_classification_report,  # Nuovi grafici K-Fold
-    plot_augmented_images
+    plot_augmented_images,
+    plot_class_grid,
+    plot_original_vs_augmented
 )
 
 # --- CONFIGURAZIONE GLOBALE ---
@@ -103,19 +105,24 @@ def plot_comparison(fcnn_results, cnn_results):
 
 def plot_loss_curves(fcnn_results, cnn_results):
     fig, axes = plt.subplots(1, 2, figsize=(14, 5))
-    fig.suptitle('Learning Dynamics - Loss Curves', fontsize=13, fontweight='bold')
+    fig.suptitle('Learning Dynamics - Loss Curves  (— Train  |  -- Validation)',
+                 fontsize=13, fontweight='bold')
 
+    # --- FCNN ---
     for label, history in fcnn_results.items():
-        axes[0].plot(history['loss'], marker='o', markersize=3, label=label)
-    axes[0].set_title('FCNN - Training Loss')
+        line, = axes[0].plot(history['loss'], marker='o', markersize=3, label=label)
+        axes[0].plot(history['val_loss'], linestyle='--', color=line.get_color(), alpha=0.6)
+    axes[0].set_title('FCNN - Train vs Validation Loss')
     axes[0].set_xlabel('Epoche')
     axes[0].set_ylabel('Loss (Cross-Entropy)')
     axes[0].legend(fontsize=7)
     axes[0].grid(True, alpha=0.4)
 
+    # --- CNN ---
     for label, history in cnn_results.items():
-        axes[1].plot(history['loss'], marker='s', markersize=3, label=label)
-    axes[1].set_title('CNN - Training Loss')
+        line, = axes[1].plot(history['loss'], marker='s', markersize=3, label=label)
+        axes[1].plot(history['val_loss'], linestyle='--', color=line.get_color(), alpha=0.6)
+    axes[1].set_title('CNN - Train vs Validation Loss')
     axes[1].set_xlabel('Epoche')
     axes[1].set_ylabel('Loss (Cross-Entropy)')
     axes[1].legend(fontsize=7)
@@ -154,6 +161,7 @@ def main():
     full_dataset = get_dataset(dataset_path)
     df_classes = analyze_dataset(full_dataset)
     plot_dataset_stats(full_dataset)
+    plot_class_grid(full_dataset)
     train_data, test_data = get_train_test_split(full_dataset)
 
     # Esperimento A: FCNN
@@ -189,10 +197,18 @@ def main():
     
     # Ricarichiamo il dataset appositamente per K-Fold
     train_dataset_kf, val_dataset_kf = get_datasets_kfold(dataset_path)
-
+    plot_original_vs_augmented(train_dataset_kf, val_dataset_kf)  
     plot_augmented_images(train_dataset_kf)
 
-    cnn_kwargs = {'n_filters': 32, 'kernel_size': 3, 'num_blocks': 3, 'num_classes': 10}
+    best_cnn_cfg = next(cfg for cfg in CNN_CONFIGS if cfg['label'] == best_cnn_label)
+    cnn_kwargs = {
+        'n_filters':   best_cnn_cfg['n_filters'],
+        'kernel_size': best_cnn_cfg['kernel_size'],
+        'num_blocks':  best_cnn_cfg['num_blocks'],
+        'num_classes': num_classes
+    }
+    print(f"\n🏆 CNN selezionata per K-Fold: {best_cnn_label}")
+    print(f"   Configurazione: {cnn_kwargs}")
     
     # NOTA: assicurati che la tua funzione train_stratified_kfold ritorni 3 elementi (results, model, report)
     results, kf_model, class_report = train_stratified_kfold(
